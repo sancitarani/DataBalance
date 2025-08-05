@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Imbalance Analysis Tool</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #111827;
+            --secondary-color: #6b7280;
+            --background-color: #f9fafb;
+            --container-bg: #ffffff;
+            --border-color: #d1d5db;
+            --primary-accent: #4f46e5;
+            --primary-accent-light: #eef2ff;
+            --success-color: #16a34a;
+            --success-light: #dcfce7;
+            --error-color: #dc2626;
+            --error-bg-color: #fee2e2;
+            --warning-color: #f59e0b;
+            --warning-bg-color: #fffbeb;
+            --mild-color: #f59e0b;
+            --moderate-color: #f97316;
+            --extreme-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .main-container {
+            max-width: 960px;
+            margin: auto;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: var(--secondary-color);
+            max-width: 600px;
+            margin: 0 auto 40px auto;
+            text-align: center;
+        }
+
+        #analysis-container {
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .caution-box {
+            background-color: var(--warning-bg-color);
+            border: 1px solid var(--warning-color);
+            color: #b45309;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .upload-area h2 { text-align: center; font-size: 1.5rem; margin-top: 0; }
+        .upload-area p { text-align: center; color: var(--secondary-color); margin-bottom: 25px; }
+        
+        .drop-zone { 
+            border: none;
+            border-radius: 12px; 
+            padding: 70px 40px; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            position: relative; 
+            text-align: center;
+            background-color: transparent;
+            outline: none;
+        }
+        .drop-zone-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .drop-zone-icon { 
+            width: 48px; 
+            height: 48px; 
+            background-color: #f9fafb;
+            border: 1px solid var(--border-color);
+            border-radius: 50%; 
+            display: inline-flex; 
+            justify-content: center; 
+            align-items: center; 
+            margin-bottom: 15px; 
+            transition: all 0.2s ease;
+        }
+        .drop-zone:hover .drop-zone-icon {
+            background-color: var(--primary-accent-light);
+            border-color: var(--primary-accent);
+        }
+        .drop-zone-icon svg { 
+            width: 24px; 
+            height: 24px; 
+            stroke: var(--primary-accent); 
+        }
+        #file-name-display {
+            font-weight: 500;
+            color: var(--secondary-color);
+            position: relative;
+            display: inline-block;
+        }
+        .file-info { display: flex; justify-content: center; align-items: center; gap: 8px; font-weight: 500; color: var(--primary-color); }
+        .file-info svg { width: 18px; height: 18px; color: var(--success-color); }
+        .file-info .remove-file {
+            display: inline-flex;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+            color: #6b7280;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 10px;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+        .file-info .remove-file:hover { background-color: #d1d5db; }
+        .drop-zone input[type="file"] { display: none; }
+        
+        .analyze-button { 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%; 
+            background-color: var(--primary-color); 
+            color: var(--container-bg); 
+            border: none; 
+            border-radius: 8px; 
+            padding: 12px 24px; 
+            font-size: 1rem; 
+            font-weight: 600; 
+            cursor: pointer; 
+            margin-top: 25px; 
+            transition: all 0.2s ease; 
+        }
+        .analyze-button:hover:not(:disabled) {
+             background-color: #4338ca;
+        }
+        .analyze-button:disabled { background-color: var(--primary-color); opacity: 0.5; cursor: not-allowed; }
+
+        /* --- STYLES FOR PROGRESS INDICATOR --- */
+        .progress-indicator {
+            display: none;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .progress-text p {
+             margin: 0;
+        }
+        .progress-indicator .subtext {
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+            margin-top: 15px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 16px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .progress-bar-value {
+            height: 100%;
+            width: 0;
+            background-color: var(--primary-accent);
+            border-radius: 8px;
+            transition: width 0.2s linear;
+        }
+
+        form.htmx-request .form-content {
+            display: none;
+        }
+        form.htmx-request .progress-indicator {
+            display: block;
+        }
+
+        /* --- STYLES FOR RESULTS --- */
+        .results-container h2 { font-size: 1.8rem; margin-bottom: 8px; font-weight: 600; }
+        .results-container .section-description { color: var(--secondary-color); margin-top: 0; margin-bottom: 30px; }
+        .result-section { margin-bottom: 40px; }
+        .grid { display: grid; gap: 24px; }
+        .grid.two-columns { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        
+        .card { background-color: #fff; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); position: relative; transition: border-color 0.3s ease; }
+        .card h3 { margin-top: 0; font-size: 1.25rem; }
+        .card img { max-width: 100%; border: 1px solid var(--border-color); border-radius: 8px; margin-top: 16px; }
+
+        .imbalance-header { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+        .imbalance-header-text { font-weight: 600; display: flex; align-items: center; gap: 8px;}
+        .imbalance-header-text svg { width: 20px; height: 20px;}
+        .imbalance-header .imbalance-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .imbalance-header .imbalance-icon svg { width: 24px; height: 24px; }
+        .imbalance-header strong { font-size: 1.1rem; }
+        .imbalance-header p { margin: 0; font-size: 0.9rem; }
+        
+        .extreme-imbalance { background-color: var(--error-bg-color); color: var(--error-color); }
+        .extreme-imbalance .imbalance-icon { background-color: rgba(220, 53, 69, 0.2); }
+        .moderate-imbalance { background-color: #fff7ed; color: var(--moderate-color); }
+        .moderate-imbalance .imbalance-icon { background-color: rgba(249, 115, 22, 0.2); }
+        .mild-imbalance { background-color: #fffbeb; color: var(--mild-color); }
+        .mild-imbalance .imbalance-icon { background-color: rgba(245, 158, 11, 0.2); }
+
+        .card h4 { margin-top: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .class-details-list { list-style: none; padding: 0; margin: 0; }
+        .class-details-list li { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .class-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .class-details-list strong { font-size: 1rem; }
+        .class-details-list p { font-size: 0.85rem; color: var(--secondary-color); margin: 0; }
+        .class-label { font-size: 0.75rem; background-color: var(--border-color); padding: 2px 6px; border-radius: 4px; }
+        .sample-count { margin-left: auto; font-weight: 500; }
+
+        .summary-footer { display: flex; justify-content: space-around; text-align: center; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; }
+        .summary-footer p { margin: 0; font-size: 0.85rem; color: var(--secondary-color); }
+        .summary-footer strong { font-size: 1.25rem; }
+
+        .explanation-card p { line-height: 1.6; }
+        .key-stats-list { list-style: none; padding: 0; margin-top: 16px; }
+        .key-stats-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+        .key-stats-list li:last-child { border-bottom: none; }
+
+        .recommendation-wrapper { position: relative; padding-top: 20px; }
+        .recommendation-badge {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--success-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .recommendation-card h5 { font-size: 0.9rem; margin-top: 20px; margin-bottom: 8px; }
+        .recommendation-card ul { list-style-position: inside; padding: 0; margin: 0 0 16px 0; font-size: 0.9rem; color: var(--secondary-color); }
+        .recommendation-card ul li { margin-bottom: 4px; }
+        
+        .footer-action { text-align: center; margin-top: 40px; }
+        .go-back-button {
+            display: inline-block;
+            background-color: var(--primary-accent);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+        .go-back-button:hover { background-color: #4338ca; }
+        
+        .error-display { text-align: center; padding: 40px 20px; }
+        .error-display .error-icon { color: var(--error-color); margin-bottom: 20px; }
+        .error-display h3 { font-size: 1.5rem; margin-bottom: 10px; }
+        .error-display .error-message { color: var(--secondary-color); margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>Data Imbalance Analysis Tool</h1>
+            <p>Analyze your dataset's class distribution, identify imbalance issues, and get personalized recommendations for balancing techniques to improve your machine learning model performance.</p>
+        </div>
+        
+        <div id="analysis-container">
+            <form hx-post="/" hx-target="#analysis-container" hx-swap="outerHTML" hx-encoding="multipart/form-data" id="upload-form">
+                <div class="form-content">
+                    <div class="upload-area">
+                        <div class="caution-box">
+                            <strong>Penting:</strong> Pastikan kolom kelas target dalam dataset Anda dinamai "Class".
+                        </div>
+                        <h2>Upload Dataset</h2>
+                        <p>Upload your dataset file to analyze class distribution and imbalance</p>
+                        
+                        <label for="file-input" class="drop-zone">
+                            <input type="file" name="file" id="file-input" accept=".csv, .xlsx, .xls" required>
+                            <div class="drop-zone-content">
+                                <div class="drop-zone-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                </div>
+                                <div id="file-name-display">Click to select a file</div>
+                            </div>
+                        </label>
+                    </div>
+                    <button type="submit" class="analyze-button" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" style="vertical-align: -2px;" width="16" height="16" fill="currentColor" class="bi bi-check2-circle" viewBox="0 0 16 16">
+                            <path d="M2.5 8a5.5 5.5 0 0 1 8.25-4.764.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0 5.5 5.5 0 1 1-11 0z"/>
+                            <path d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293 5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l7-7z"/>
+                        </svg>
+                        <span>Analyze Dataset</span>
+                    </button>
+                </div>
+                <div class="progress-indicator">
+                    <div class="progress-text">
+                        <p>Menganalisis Dataset Anda...</p>
+                        <span id="progress-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-value" id="progress-bar-value"></div>
+                    </div>
+                    <p class="subtext">Proses ini mungkin memakan waktu beberapa saat untuk file besar.</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let progressInterval = null;
+
+        function initializeUploadForm() {
+            const form = document.getElementById('upload-form');
+            if (!form) return;
+
+            const fileInput = document.getElementById('file-input');
+            const fileNameDisplay = document.getElementById('file-name-display');
+            const analyzeButton = document.querySelector('.analyze-button');
+
+            const resetForm = () => {
+                fileInput.value = '';
+                fileNameDisplay.innerHTML = 'Click to select a file';
+                analyzeButton.disabled = true;
+                analyzeButton.style.backgroundColor = 'var(--primary-color)';
+                analyzeButton.style.opacity = '0.5';
+            };
+
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    fileNameDisplay.innerHTML = `
+                        <div class="file-info">
+                            <span>${this.files[0].name}</span>
+                            <span class="remove-file" title="Remove file">&times;</span>
+                        </div>
+                    `;
+                    analyzeButton.disabled = false;
+                    analyzeButton.style.backgroundColor = 'var(--primary-accent)';
+                    analyzeButton.style.opacity = '1';
+
+                    document.querySelector('.remove-file').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        resetForm();
+                    });
+                } else {
+                    resetForm();
+                }
+            });
+        }
+
+        document.body.addEventListener('htmx:beforeRequest', function(event) {
+            if (event.detail.elt.id !== 'upload-form') return;
+            
+            const form = document.getElementById('upload-form');
+            if(form) form.classList.add('htmx-request');
+
+            const progressBar = document.getElementById('progress-bar-value');
+            const percentageText = document.getElementById('progress-percentage');
+            if (!progressBar || !percentageText) return;
+
+            let progress = 0;
+            progressBar.style.width = '0%';
+            percentageText.textContent = '0%';
+
+            if (progressInterval) clearInterval(progressInterval);
+
+            progressInterval = setInterval(() => {
+                progress += Math.random() * 4;
+                if (progress > 99) {
+                    progress = 99;
+                    clearInterval(progressInterval);
+                }
+                progressBar.style.width = progress + '%';
+                percentageText.textContent = Math.floor(progress) + '%';
+            }, 120);
+        });
+
+        document.body.addEventListener('htmx:afterOnLoad', function(event) {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            initializeUploadForm();
+        });
+
+        // Initialize on first load
+        initializeUploadForm();
+    </script>
+</body>
+</html>

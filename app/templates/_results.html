@@ -1,0 +1,160 @@
+<div id="analysis-container">
+    {% if error %}
+        <div class="error-display">
+            <div class="error-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <h3>Terjadi Kesalahan</h3>
+            <p class="error-message">{{ error }}</p>
+            <a href="/" class="go-back-button">Unggah File Lain</a>
+        </div>
+    {% else %}
+        <div class="results-container">
+            <!-- Bagian 1: Visualisasi Kelas Target -->
+            <div class="result-section">
+                <h2>Visualisasi Kelas Target</h2>
+                <p class="section-description">Representasi visual dari distribusi dan proporsi kelas dataset Anda.</p>
+                <div class="grid two-columns">
+                    <div class="card">
+                        <h3>Distribusi Frekuensi Kelas</h3>
+                        <img src="data:image/png;base64,{{ bar_chart }}" alt="Diagram Batang Frekuensi Kelas">
+                    </div>
+                    <div class="card">
+                        <h3>Proporsi Kelas</h3>
+                        <img src="data:image/png;base64,{{ pie_chart }}" alt="Diagram Lingkaran Proporsi Kelas">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bagian 2: Ringkasan Distribusi Kelas -->
+            <div class="result-section">
+                <h2>Ringkasan Distribusi Kelas</h2>
+                <div class="grid two-columns">
+                    <div class="card">
+                        <div class="imbalance-header {{ analysis.category.lower().replace(' ', '-') }}">
+                            <div class="imbalance-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            </div>
+                            <div>
+                                <strong>{{ analysis.category }}</strong>
+                                <p>Membutuhkan perhatian</p>
+                            </div>
+                        </div>
+                        <h4>Detail Kelas</h4>
+                        <ul class="class-details-list">
+                            {% for class in analysis.class_details %}
+                            <li>
+                                <span class="class-color-dot" style="background-color: {{ ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6'][loop.index0] }};"></span>
+                                <div>
+                                    <strong>Kelas {{ class.name }}</strong> <span class="class-label">{{ class.label }}</span>
+                                    <p>{{ class.percentage }} dari dataset</p>
+                                </div>
+                                <span class="sample-count">{{ "{:,.0f}".format(class.count).replace(",", ".") }} sampel</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <div class="summary-footer">
+                            <div>
+                                <p>Total Kelas</p>
+                                <strong>{{ analysis.key_stats.num_classes }}</strong>
+                            </div>
+                            <div>
+                                <p>Total Sampel</p>
+                                <strong>{{ "{:,.0f}".format(analysis.key_stats.total_samples).replace(",", ".") }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card explanation-card">
+                         <div class="imbalance-header-text {{ analysis.category.lower().replace(' ', '-') }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
+                            Deteksi {{ analysis.category }}
+                        </div>
+                        <p>{{ analysis.description }}</p>
+
+                        <h4>Statistik Kunci</h4>
+                        <ul class="key-stats-list">
+                            <li><span>Total Sampel:</span> <strong>{{ "{:,.0f}".format(analysis.key_stats.total_samples).replace(",", ".") }}</strong></li>
+                            <li><span>Jumlah Kelas:</span> <strong>{{ analysis.key_stats.num_classes }}</strong></li>
+                            <li><span>Degree of Imbalance:</span> <strong>{{ analysis.key_stats.degree_of_imbalance }}</strong></li>
+                            <li><span>Perbedaan Distribusi:</span> <strong>{{ analysis.key_stats.distribution_difference }}</strong></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bagian 3: Saran Metode Balancing -->
+            {% if analysis.recommendation_key != 'none' %}
+            <div class="result-section">
+                <h2>Saran Metode Balancing</h2>
+                <p class="section-description">Saran yang dipersonalisasi berdasarkan karakteristik ketidakseimbangan dataset Anda.</p>
+                <div class="grid two-columns">
+                    <!-- SMOTE Card -->
+                    <div class="recommendation-wrapper">
+                        {% if analysis.recommendation_key == 'smote_adasyn' %}<div class="recommendation-badge">Rekomendasi</div>{% endif %}
+                        <div class="card">
+                            <h4>SMOTE</h4>
+                            <p class="method-description">Teknik Oversampling Minoritas Sintetis menghasilkan contoh sintetis dengan melakukan interpolasi antara contoh yang ada.</p>
+                            <h5>Kelebihan</h5>
+                            <ul>
+                                <li>Meningkatkan jumlah sampel kelas minoritas</li>
+                                <li>Mengurangi risiko overfitting</li>
+                                <li>Metode yang sudah mapan</li>
+                            </ul>
+                            <h5>Kekurangan</h5>
+                            <ul>
+                                <li>Dapat membuat sampel yang tidak realistis</li>
+                                <li>Sensitif terhadap outlier</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- ADASYN Card -->
+                    <div class="recommendation-wrapper">
+                        {% if analysis.recommendation_key == 'smote_adasyn' %}<div class="recommendation-badge">Rekomendasi</div>{% endif %}
+                        <div class="card">
+                            <h4>ADASYN</h4>
+                            <p class="method-description">Sampling Sintetis Adaptif berfokus pada pembuatan sampel di wilayah yang lebih sulit dipelajari.</p>
+                             <h5>Kelebihan</h5>
+                            <ul>
+                                <li>Pembuatan sampel adaptif</li>
+                                <li>Fokus pada kasus yang sulit</li>
+                                <li>Seringkali lebih baik dari SMOTE dasar</li>
+                            </ul>
+                            <h5>Kekurangan</h5>
+                            <ul>
+                                <li>Lebih kompleks</li>
+                                <li>Intensif secara komputasi</li>
+                                <li>Memerlukan penyesuaian parameter</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- KNSMOTE Card -->
+                    <div class="recommendation-wrapper">
+                        {% if analysis.recommendation_key == 'kn_smote' %}<div class="recommendation-badge">Rekomendasi</div>{% endif %}
+                        <div class="card">
+                            <h4>K-Nearest Neighbors SMOTE</h4>
+                            <p class="method-description">Varian dari SMOTE yang menggunakan algoritma K-Nearest Neighbors untuk menghasilkan sampel sintetis, seringkali lebih efektif untuk data dengan noise.</p>
+                             <h5>Kelebihan</h5>
+                            <ul>
+                                <li>Lebih tangguh terhadap noise dan outlier</li>
+                                <li>Menciptakan batas keputusan yang lebih jelas</li>
+                                <li>Efektif untuk ketidakseimbangan ekstrem</li>
+                            </ul>
+                            <h5>Kekurangan</h5>
+                            <ul>
+                                <li>Lebih mahal secara komputasi daripada SMOTE dasar</li>
+                                <li>Kinerja sangat bergantung pada pilihan 'k'</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="footer-action">
+                <a href="/" class="go-back-button">Analisis Dataset Lain</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
