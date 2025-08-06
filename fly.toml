@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for databalancing on 2025-08-06T08:31:18+07:00
+# fly.toml app configuration file generated for databalance on 2025-08-06T02:45:57Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'databalancing'
+app = 'databalance'
 primary_region = 'sin'
 
 [build]
@@ -20,3 +20,4 @@ primary_region = 'sin'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 1024
